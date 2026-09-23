@@ -28,7 +28,7 @@ export function Composer({
   }
 
   return (
-    <div className="flex items-end gap-2 border-t p-3">
+    <div className="flex items-end gap-2 border-t px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <Textarea
         aria-label="Describe what you want to build"
         placeholder="Describe what you want to build, or answer the question above..."

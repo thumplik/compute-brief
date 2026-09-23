@@ -23,7 +23,7 @@ export function Header({
   }
 
   return (
-    <header className="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <header className="flex flex-col gap-2 border-b px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 className="text-base font-semibold">ComputeBrief</h1>
         <p className="hidden text-xs text-muted-foreground sm:block">

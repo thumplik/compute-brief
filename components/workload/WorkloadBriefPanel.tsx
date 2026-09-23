@@ -40,7 +40,7 @@ export function WorkloadBriefPanel({ onClose }: { onClose?: () => void }) {
 
   return (
     <aside className="flex h-full flex-col overflow-hidden border-t bg-background md:border-t-0 md:border-l md:bg-muted/20">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex items-center justify-between border-b px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <h2 className="text-sm font-semibold">Live Workload Brief</h2>
         <div className="flex items-center gap-2">
           <ReadinessBadge readiness={spec.readiness} />
@@ -51,7 +51,7 @@ export function WorkloadBriefPanel({ onClose }: { onClose?: () => void }) {
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <Accordion defaultValue={ALL_SECTIONS} className="space-y-1">
           <Section title="Use Case">
             <ProvenanceRow label="Problem statement" field={spec.problem.statement} />

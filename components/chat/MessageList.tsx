@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { ChatMessage } from "@/lib/state/workload-context";
 import { cn } from "@/lib/utils";
+import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator";
 
 export function MessageList({ messages, isSending }: { messages: ChatMessage[]; isSending: boolean }) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -36,13 +37,7 @@ export function MessageList({ messages, isSending }: { messages: ChatMessage[]; 
           </div>
         );
       })}
-      {showThinking && (
-        <div className="flex justify-start">
-          <div className="max-w-[85%] rounded-2xl bg-muted px-3.5 py-2 text-sm text-muted-foreground">
-            Thinking&hellip;
-          </div>
-        </div>
-      )}
+      {showThinking && <ThinkingIndicator />}
       <div ref={bottomRef} />
     </div>
   );
