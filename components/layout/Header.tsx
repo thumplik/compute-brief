@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useWorkload } from "@/lib/state/workload-context";
 
 export function Header() {
@@ -23,9 +24,12 @@ export function Header() {
           Describe what you want to build. We&apos;ll figure out what it takes.
         </p>
       </div>
-      <Button variant="outline" size="sm" onClick={handleReset}>
-        Start New Intake
-      </Button>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <Button variant="outline" size="sm" onClick={handleReset}>
+          Start New Intake
+        </Button>
+      </div>
     </header>
   );
 }

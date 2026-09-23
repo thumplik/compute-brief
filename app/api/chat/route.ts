@@ -34,8 +34,21 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const turn = await runConversationTurn({ history: parsedRequest.data.messages, spec });
-    const merged = mergeSpecPatch(spec, turn.specPatch as WorkloadSpecPatch);
-    const updatedSpec = WorkloadSpecSchema.parse({ ...merged, readiness: turn.readiness });
+
+    // The model's specPatch isn't constrained by a strict JSON schema at the
+    // API level (Together doesn't support structured outputs for this
+    // model), so an occasional patch can drift from WorkloadSpecSchema. That
+    // should degrade to "keep the prior spec for this turn," not break the
+    // whole exchange — the assistant's message and next question are still
+    // valid and worth returning.
+    let updatedSpec = spec;
+    try {
+      const merged = mergeSpecPatch(spec, turn.specPatch as WorkloadSpecPatch);
+      updatedSpec = WorkloadSpecSchema.parse({ ...merged, readiness: turn.readiness });
+    } catch (mergeError) {
+      console.error("ComputeBrief: dropping an unmergeable specPatch for this turn.", mergeError);
+      updatedSpec = WorkloadSpecSchema.parse({ ...spec, readiness: turn.readiness });
+    }
 
     return NextResponse.json({
       assistantMessage: turn.assistantMessage,

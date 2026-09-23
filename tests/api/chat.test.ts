@@ -94,4 +94,25 @@ describe("POST /api/chat", () => {
     const json = await response.json();
     expect(json.error).toMatch(/try again/i);
   });
+
+  it("keeps the prior spec and still returns the assistant message when the model's patch doesn't fit the schema", async () => {
+    const priorSpec = { ...emptyWorkloadSpec(), requester: { organization: userProvided("Acme Robotics") } };
+    runConversationTurn.mockResolvedValue({
+      assistantMessage: "Noted.",
+      // classification must be an array of a closed enum — this value doesn't fit,
+      // simulating the model drifting from the schema since structured outputs
+      // aren't enforced by the provider.
+      specPatch: { classification: { value: "definitely-not-a-real-classification", source: "ai_inferred" } },
+      nextQuestion: "What format is the data in?",
+      readiness: "needs_information",
+    });
+
+    const response = await POST(postRequest({ messages: [{ role: "user", content: "..." }], spec: priorSpec }));
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.assistantMessage).toBe("Noted.");
+    expect(json.spec.requester.organization.value).toBe("Acme Robotics");
+    expect(json.spec.readiness).toBe("needs_information");
+  });
 });
