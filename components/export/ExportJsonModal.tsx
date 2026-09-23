@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toCanonicalJSON } from "@/lib/export/canonical-json";
 import { toServiceNowPayload } from "@/lib/export/servicenow";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { WorkloadSpec } from "@/lib/schema/workload-spec";
 import type { ComputePlan } from "@/lib/schema/compute-plan";
 
@@ -45,7 +46,7 @@ export function ExportJsonModal({
   plan: ComputePlan;
   narrative: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const payload = useMemo(
     () => toServiceNowPayload(toCanonicalJSON(spec, plan, narrative)),
@@ -64,9 +65,9 @@ export function ExportJsonModal({
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(json);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(json);
+    setCopyState(ok ? "copied" : "failed");
+    setTimeout(() => setCopyState("idle"), 2000);
   }
 
   return (
@@ -91,7 +92,7 @@ export function ExportJsonModal({
         <pre className="max-h-96 overflow-auto rounded-lg border bg-muted/40 p-3 text-xs">{json}</pre>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? "Copied" : "Copy JSON"}
+            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy JSON"}
           </Button>
           <Button size="sm" onClick={handleDownload}>
             Download JSON

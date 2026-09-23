@@ -236,11 +236,13 @@ export function WorkloadBriefPanel() {
                 </Badge>
               </div>
             ))}
-            {plan.requiredAccess.map((note) => (
-              <div key={note} className="py-1.5 text-xs text-muted-foreground">
-                {note}
-              </div>
-            ))}
+            {plan.requiredAccess
+              .filter((note) => !spec.access.items.some((item) => note.startsWith(item.name)))
+              .map((note) => (
+                <div key={note} className="py-1.5 text-xs text-muted-foreground">
+                  {note}
+                </div>
+              ))}
           </Section>
 
           <Section title="Evaluation">

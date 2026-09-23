@@ -11,19 +11,20 @@ import { useWorkload } from "@/lib/state/workload-context";
 import { buildComputePlan } from "@/lib/planner/workload-planner";
 import { MVP_CLUSTER_PROFILE } from "@/config/cluster-profile";
 import { narrativeToMarkdownFile } from "@/lib/export/markdown";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export default function BriefPage() {
   const { spec, narrative, isGeneratingBrief, generateBrief, error } = useWorkload();
   const plan = useMemo(() => buildComputePlan(spec, MVP_CLUSTER_PROFILE), [spec]);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const title = spec.requester.projectName?.value ?? spec.requester.organization?.value ?? undefined;
 
   async function handleCopy() {
     if (!narrative) return;
-    await navigator.clipboard.writeText(narrative);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(narrative);
+    setCopyState(ok ? "copied" : "failed");
+    setTimeout(() => setCopyState("idle"), 2000);
   }
 
   function handleDownload() {
@@ -69,7 +70,7 @@ export default function BriefPage() {
           <>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy}>
-                {copied ? "Copied" : "Copy Narrative"}
+                {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy Narrative"}
               </Button>
               <Button variant="outline" size="sm" onClick={handleDownload}>
                 Download Markdown
