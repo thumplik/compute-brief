@@ -1,5 +1,5 @@
 import { togetherai } from "@ai-sdk/togetherai";
-import type { LanguageModel } from "ai";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { getTogetherModelId } from "@/config/model";
 
 /**
@@ -9,10 +9,10 @@ import { getTogetherModelId } from "@/config/model";
  * intent, and so a future model swap for one use case doesn't touch the
  * other.
  */
-export function getChatModel(): LanguageModel {
+export function getChatModel(): LanguageModelV4 {
   return togetherai(getTogetherModelId());
 }
 
-export function getStructuredModel(): LanguageModel {
+export function getStructuredModel(): LanguageModelV4 {
   return togetherai(getTogetherModelId());
 }
