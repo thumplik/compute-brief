@@ -1,4 +1,4 @@
-import { generateObject, generateText, type ModelMessage } from "ai";
+import { streamObject, generateText, type ModelMessage } from "ai";
 import { getChatModel, getStructuredModel } from "@/lib/ai/provider";
 import { CONVERSATION_SYSTEM_PROMPT } from "@/lib/ai/prompts/system";
 import { NARRATIVE_SYSTEM_PROMPT } from "@/lib/ai/prompts/narrative";
@@ -11,7 +11,7 @@ export interface ConversationMessage {
   content: string;
 }
 
-type GenerateObjectFn = typeof generateObject;
+type StreamObjectFn = typeof streamObject;
 type GenerateTextFn = typeof generateText;
 
 export class TurnGenerationError extends Error {
@@ -28,38 +28,87 @@ export class NarrativeGenerationError extends Error {
   }
 }
 
-export interface RunConversationTurnOptions {
+export interface StreamConversationTurnOptions {
   history: ConversationMessage[];
   spec: WorkloadSpec;
-  generateObjectFn?: GenerateObjectFn;
+  streamObjectFn?: StreamObjectFn;
+  /** Called with each new slice of assistantMessage text as it becomes available. */
+  onDelta: (text: string) => void;
 }
 
 function buildTurnInstructions(spec: WorkloadSpec): string {
   return `${CONVERSATION_SYSTEM_PROMPT}\n\nCurrent WorkloadSpec state (JSON, source of truth so far — patch only what changes):\n${JSON.stringify(spec)}`;
 }
 
-export async function runConversationTurn({
+function extractAssistantMessage(partial: unknown): string {
+  if (
+    typeof partial === "object" &&
+    partial !== null &&
+    "assistantMessage" in partial &&
+    typeof (partial as { assistantMessage: unknown }).assistantMessage === "string"
+  ) {
+    return (partial as { assistantMessage: string }).assistantMessage;
+  }
+  return "";
+}
+
+/**
+ * Marks a failure that happened before any content reached the caller via
+ * onDelta — safe to retry silently. Once even one delta has been sent, the
+ * caller (the API route) has already streamed that text to the client, so a
+ * silent retry would either duplicate or contradict what's on screen; in
+ * that case this is *not* thrown and the real error propagates instead.
+ */
+class RetryableStreamError extends Error {}
+
+export async function streamConversationTurn({
   history,
   spec,
-  generateObjectFn = generateObject,
-}: RunConversationTurnOptions): Promise<TurnResult> {
+  streamObjectFn = streamObject,
+  onDelta,
+}: StreamConversationTurnOptions): Promise<TurnResult> {
   const messages: ModelMessage[] = history.map((m) => ({ role: m.role, content: m.content }));
   const instructions = buildTurnInstructions(spec);
-  const call = () =>
-    generateObjectFn({
-      model: getStructuredModel(),
-      schema: TurnResultSchema,
-      instructions,
-      messages,
-    });
+
+  async function attempt(): Promise<TurnResult> {
+    let sentAnything = false;
+    try {
+      const result = streamObjectFn({
+        model: getStructuredModel(),
+        schema: TurnResultSchema,
+        instructions,
+        messages,
+      });
+
+      let last = "";
+      for await (const partial of result.partialObjectStream) {
+        const message = extractAssistantMessage(partial);
+        if (message.length > last.length) {
+          onDelta(message.slice(last.length));
+          sentAnything = true;
+          last = message;
+        }
+      }
+
+      const turn = (await result.object) as TurnResult;
+      if (turn.assistantMessage.length > last.length) {
+        onDelta(turn.assistantMessage.slice(last.length));
+      }
+      return turn;
+    } catch (error) {
+      if (sentAnything) throw error;
+      throw new RetryableStreamError();
+    }
+  }
 
   try {
-    const result = await call();
-    return result.object as TurnResult;
-  } catch {
+    return await attempt();
+  } catch (error) {
+    if (!(error instanceof RetryableStreamError)) {
+      throw new TurnGenerationError();
+    }
     try {
-      const result = await call();
-      return result.object as TurnResult;
+      return await attempt();
     } catch {
       throw new TurnGenerationError();
     }

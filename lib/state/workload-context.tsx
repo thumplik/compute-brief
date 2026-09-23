@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { emptyWorkloadSpec, type WorkloadSpec } from "@/lib/schema/workload-spec";
 import type { ComputePlan } from "@/lib/schema/compute-plan";
+import { readNdjsonStream } from "@/lib/ndjson";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -96,17 +97,60 @@ export function WorkloadProvider({ children }: { children: React.ReactNode }) {
     async (content: string) => {
       setError(null);
       const nextMessages: ChatMessage[] = [...messages, { role: "user", content }];
-      setMessages(nextMessages);
+      setMessages([...nextMessages, { role: "assistant", content: "" }]);
       setIsSendingMessage(true);
+
+      let assistantText = "";
+      let streamErrorMessage: string | null = null;
+
       try {
-        const result = await postJson<{ assistantMessage: string; nextQuestion: string | null; spec: WorkloadSpec }>(
-          "/api/chat",
-          { messages: nextMessages, spec }
-        );
-        setSpec(result.spec);
-        setMessages([...nextMessages, { role: "assistant", content: result.assistantMessage }]);
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ messages: nextMessages, spec }),
+        });
+        if (!response.ok || !response.body) {
+          const json = await response.json().catch(() => ({}));
+          throw new Error(
+            typeof json.error === "string" ? json.error : "Something went wrong. Please try again."
+          );
+        }
+
+        await readNdjsonStream(response.body, (raw) => {
+          const event = raw as
+            | { type: "delta"; text: string }
+            | { type: "final"; nextQuestion: string | null; spec: WorkloadSpec }
+            | { type: "error"; message: string };
+
+          if (event.type === "delta") {
+            assistantText += event.text;
+            const textSoFar = assistantText;
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: textSoFar };
+              return updated;
+            });
+          } else if (event.type === "final") {
+            setSpec(event.spec);
+          } else if (event.type === "error") {
+            streamErrorMessage = event.message;
+          }
+        });
+
+        if (streamErrorMessage) {
+          throw new Error(streamErrorMessage);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+        if (!assistantText) {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === "assistant" && last.content === "") {
+              return prev.slice(0, -1);
+            }
+            return prev;
+          });
+        }
       } finally {
         setIsSendingMessage(false);
       }

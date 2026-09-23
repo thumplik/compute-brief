@@ -180,12 +180,21 @@ against the real Together API during development.
 
 The configured model (`zai-org/GLM-5.3-Flash` on Together) doesn't support the AI SDK's strict
 structured-outputs mode (`supportsStructuredOutputs: false` on the provider's language model), so
-`generateObject` falls back to a JSON-via-prompt strategy rather than a schema-constrained decode.
-In practice this means each conversational turn can take on the order of 10–60 seconds — the UI
-shows a "Thinking…" state throughout. `runConversationTurn` (`lib/ai/conversation.ts`) retries once
-on a generation failure before surfacing a readable error, and `app/api/chat/route.ts` falls back to
-keeping the prior spec (while still returning the assistant's message) if a patch doesn't validate
-against `WorkloadSpecSchema`, so one malformed turn doesn't break the conversation.
+`generateObject`/`streamObject` fall back to a JSON-via-prompt strategy rather than a
+schema-constrained decode. A full turn (including the structured `specPatch`) can still take on the
+order of several seconds to a minute depending on conversation length, but the conversational turns
+stream: `/api/chat` uses `streamConversationTurn` (`lib/ai/conversation.ts`), which reads Together's
+`partialObjectStream` and forwards each new slice of `assistantMessage` text to the client as soon as
+it's generated (via a small newline-delimited-JSON protocol — see `lib/ndjson.ts`), so the reply
+appears progressively rather than after one long blocking wait. The structured `specPatch` (which
+drives the live Workload Brief panel) still only becomes available once the full object is validated
+at the end of the stream. `streamConversationTurn` retries once on a failure that occurs before any
+text has reached the client (safe, since nothing user-visible needs to be undone); once any text has
+streamed, a failure is surfaced as an in-band `{"type":"error"}` event instead, since the HTTP
+response has already started. `app/api/chat/route.ts` separately falls back to keeping the prior spec
+(while still returning the assistant's message) if the final patch doesn't validate against
+`WorkloadSpecSchema`, so one malformed turn doesn't break the conversation. Narrative generation
+(`/api/narrative`) is a one-time, less latency-sensitive action and remains non-streaming.
 
 ## Deployment
 
