@@ -1870,6 +1870,15 @@ git commit -m "Add Markdown export and ServiceNow payload extension point"
 
 ---
 
+## Execution note: Zod v4 deviations from this plan's original code
+
+The installed `zod` resolved to v4.6.5, which removed `.deepPartial()` and changed `z.record()` to reject the two-argument enum-key form used as this plan's first draft. Actual implementation therefore differs from the code blocks above in two ways (both applied consistently across Tasks 3–5):
+
+1. `existingAssets` and `dataReadiness` use `z.record(z.string(), provenance(...))` (string key) instead of `z.record(EnumSchema, ...)`.
+2. `WorkloadSpecPatchSchema` is `z.record(z.string(), z.unknown())` (a loose structural check), not `WorkloadSpecSchema.deepPartial()`. A hand-rolled `DeepPartial<T>` TS type provides compile-time authoring safety for `WorkloadSpecPatch` in test fixtures; runtime correctness is enforced where it matters — after `deepMergePatch` merges the patch into the spec, the merged result is validated with `WorkloadSpecSchema.parse()` in `mergeSpecPatch`.
+
+All 38 tests, lint, typecheck, and `next build` pass under this implementation.
+
 ## Plan A self-review notes
 
 - **Coverage:** requester/problem/successCriteria/classification/maturity/existingAssets/model/data/dataReadiness/compute/storage/networking/software/access/evaluation/deployment/timeline/blockers/unknowns/readiness are all in `WorkloadSpecSchema` (Task 3). Provenance (fact vs. inference vs. unknown, confidence, reason, assumptions) is in Task 2 and used throughout. The "no training needed" / RAG case, the "not enough info, benchmark first" case, and the "scale beyond current GPU count" case are each covered by a planner test (Task 8). Canonical JSON with provenance preserved and no fabricated placeholders is Task 9. Markdown/ServiceNow extension point is Task 10.
