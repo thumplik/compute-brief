@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MessageList } from "@/components/chat/MessageList";
 import { Composer } from "@/components/chat/Composer";
-import { ExamplePrompts } from "@/components/chat/ExamplePrompts";
 import { useWorkload } from "@/lib/state/workload-context";
 
 export function ChatPanel() {
@@ -19,8 +18,14 @@ export function ChatPanel() {
   return (
     <section className="flex h-full flex-col overflow-hidden">
       {messages.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center">
-          <ExamplePrompts onPick={(text) => sendMessage(text)} />
+        <div className="flex flex-1 items-center justify-center px-4">
+          <div className="mx-auto max-w-lg text-center">
+            <h1 className="text-lg font-semibold">What are you trying to build?</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Describe the problem however you&apos;d normally explain it to a colleague. You
+              don&apos;t need to know what model, GPUs, software, or infrastructure you need.
+            </p>
+          </div>
         </div>
       ) : (
         <MessageList messages={messages} isSending={isSendingMessage} />

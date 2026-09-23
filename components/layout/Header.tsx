@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useWorkload } from "@/lib/state/workload-context";
 
-export function Header() {
+export function Header({
+  briefOpen,
+  onToggleBrief,
+}: {
+  briefOpen?: boolean;
+  onToggleBrief?: () => void;
+}) {
   const { messages, reset } = useWorkload();
   const router = useRouter();
 
@@ -17,14 +23,19 @@ export function Header() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b px-4 py-3">
+    <header className="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 className="text-base font-semibold">ComputeBrief</h1>
-        <p className="text-xs text-muted-foreground">
+        <p className="hidden text-xs text-muted-foreground sm:block">
           Describe what you want to build. We&apos;ll figure out what it takes.
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {onToggleBrief && (
+          <Button variant="outline" size="sm" onClick={onToggleBrief}>
+            {briefOpen ? "Hide Brief" : "Show Brief"}
+          </Button>
+        )}
         <ThemeToggle />
         <Button variant="outline" size="sm" onClick={handleReset}>
           Start New Intake

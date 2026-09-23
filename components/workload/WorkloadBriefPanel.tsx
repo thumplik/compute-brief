@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { XIcon } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Section } from "@/components/workload/Section";
 import { ProvenanceRow } from "@/components/workload/ProvenanceRow";
 import { ReadinessBadge } from "@/components/workload/ReadinessBadge";
@@ -32,15 +34,22 @@ const ALL_SECTIONS = [
   "Important Unknowns",
 ];
 
-export function WorkloadBriefPanel() {
+export function WorkloadBriefPanel({ onClose }: { onClose?: () => void }) {
   const { spec } = useWorkload();
   const plan = useMemo(() => buildComputePlan(spec, MVP_CLUSTER_PROFILE), [spec]);
 
   return (
-    <aside className="flex h-full flex-col overflow-hidden border-t bg-muted/20 md:border-t-0 md:border-l">
+    <aside className="flex h-full flex-col overflow-hidden border-t bg-background md:border-t-0 md:border-l md:bg-muted/20">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold">Live Workload Brief</h2>
-        <ReadinessBadge readiness={spec.readiness} />
+        <div className="flex items-center gap-2">
+          <ReadinessBadge readiness={spec.readiness} />
+          {onClose && (
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close Live Workload Brief">
+              <XIcon />
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-2">
         <Accordion defaultValue={ALL_SECTIONS} className="space-y-1">
